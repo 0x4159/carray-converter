@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C Array Formatter</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+  }
+  .container {
+    margin: 20px;
+    padding: 20px;
+  }
+  #arrayInput,
+  .output {
+    width: calc(100%; -40px); /* Adjust width based on parent's padding */
+    max-width: 100%;
+    box-sizing: border-box; /* Includes padding and border in the element's total width */
+    margin-bottom: 10px; /* Add some space below the textarea */
+  }
+  .output {
+    white-space: pre;
+    background: #f4f4f4;
+    border: 1px solid #ddd;
+    padding: 10px;
+    font-family: 'Courier New', Courier, monospace; /* Monospaced font */
+	  overflow: auto;
+	  height: auto; /* Adjust height automatically based on content */
+    max-height: 350px;
+  }
+  button {
+    margin-top: 10px;
+  }
+  
+  @media (max-width: 768px) { /* Example media query for tablets */
+    .container {
+      margin: 10px;
+      padding: 10px;
+    }
+  
+    #arrayInput,
+    .output {
+      width: calc(100% - 20px); /* Adjust width based on updated container padding */
+    }
+  }
+
+  @media (max-width: 480px) { /* Example media query for mobile phones */
+    #arrayInput,
+    .output {
+      width: calc(100% - 10px); /* Adjust width for smaller devices */
+    }
+  }
+</style>
+</head>
+<body>
+  <h1>File to C Array Converter</h1>
+  <p>
+    This utility converts binary files or c formatted arrays into a user specified format<br>
+    Valid input is a c-like array (Hexadecimal or decimal comma separated values surrounded by curly braces)<br>
+    Text before and after the opening and closing curly braces are copied to the output
+  </p>
+<div class="container">
+  <label for="binaryFile">Choose a binary file to open:</label>
+  <input type="file" id="binaryFile" name="binaryFile"><br>
+  <label for="textFile">Choose a text file to open:</label>
+  <input type="file" id="textFile" name="textFile"><br>
+  - or -<br>
+  <label for="arrayInput">Enter a C-formatted array (e.g., int arr[] = {0x1A, 25, ...}):</label><br>
+  <textarea id="arrayInput" rows="10" cols="2000" onclick="clearArrayInput(skipClear); skipClear=1;">
+
+  </textarea><br>
+  
+  <label for="outputFormat">Output as:</label>
+  <select id="outputFormat" onchange="formatArray()">
+    <option value="hex">Hexadecimal</option>
+    <option value="decimal">Decimal</option>
+  </select><br>
+  
+  <input type="checkbox" id="skipHexPrefix" onchange="formatArray()">
+  <label for="skipHexPrefix">Skip hex prefix (0x)</label><br>
+  <input type="checkbox" id="skipComma" onchange="formatArray()">
+  <label for="skipComma">Skip adding comma between elements</label><br>
+  <input type="checkbox" id="skipNewline" onchange="formatArray()">
+  <label for="skipNewline">Skip adding newlines</label><br>
+
+  <input type="checkbox" id="enableLineBreakAfterChar" onchange="formatArray()">
+  <label for="enableLineBreakAfterChar">Enable char count line break:</label>
+  <input type="number" id="lineBreakAfterChar" value="80"><br>
+
+  <input type="checkbox" id="enableLineBreakAfterElem" checked onchange="formatArray()">
+  <label for="enableLineBreakAfterElem">Enable element count line break:</label>
+  <input type="number" id="lineBreakAfterElem" value="16" onchange="formatArray()"><br>
+  
+  <label for="indentation">Indentation:</label>
+  <select id="indentation" onchange="updateIndentation(); formatarray();" on>
+    <option value="0">None</option>
+    <option value="1">1 space</option>
+    <option value="2">2 spaces</option>
+    <option value="4" selected>4 spaces</option>
+    <option value="8">8 spaces</option>
+    <option value="t">1 tab</option>
+    <option value="tt">2 tabs</option>
+  </select>
+  <input type="text" id="linePrefix" value="    ">
+  <br>
+  
+  <button onclick="formatArray()">Format Array</button>
+  <button onclick="copyToClipboard()">Copy to Clipboard</button>
+  <button id="b64button" onclick="updateUrlWithBase64()">Update URL with Base64 Data</button>
+  <button onclick="downloadBinary()">Download Binary File</button>
+  <button onclick="downloadCFile()">Download Output Text</button>
+  <div class="output" id="output"></div>
+</div>
+
+<script>
+let mytest = "hello world"
+let arrayElementsInt = [];
+let inputBinaryFile = document.getElementById("binaryFile");
+inputBinaryFile.addEventListener("change", handleBinaryFile, false);
+let inputTextFile = document.getElementById("textFile");
+inputTextFile.addEventListener("change", handleTextFile, false);
+let skipClear = 0;
+
+window.onload = function() {
+  // Check for a query parameter 'data' on page load
+  const params = new URLSearchParams(window.location.search);
+  const encodedData = params.get('data');
+  if (encodedData) {
+    // Base64 decode the parameter value and populate the arrayInput
+    const decodedData = atob(encodedData);
+    document.getElementById('arrayInput').value = decodedData;
+    skipClear = 1;
+  }
+  else{
+    document.getElementById('arrayInput').value = atob('LyogVGhlIGZvbGxvd2luZyBhcnJheSB3aWxsIGJlIGNvbnZlcnRlZCB0byB0aGUgc3BlY2lmaWVkIGZvcm1hdCAqLwp1bnNpZ25lZCBjaGFyIHRlc3RfYXJyYXlbXSA9IHsKICAxLCAyLCA0LCAweDgsIDB4MTAsIDMyICw2NCwxMjgsMjU1LDI1NSwyNTUsMHg0MSwgMHg1OQp9OwoKLy8gVGhlIGZvbGxvd2luZyBhcnJheSB3aWxsIG5vdCBiZSBjb252ZXJ0ZWQgKG5vdCB0aGUgZmlyc3Qgc2V0IG9mIGN1cmx5IGJyYWNlcykKY2hhciBub19jb252ZXJ0X2FycmF5W10gPSB7CiAgMSwgMiwgNCwgMHg4LCAweDEwLCAzMiAsNjQsMTI4Cn07CiAg')
+  }
+};
+
+function clearArrayInput(skip=0) {
+  if(!skip){
+    document.getElementById('arrayInput').value = "";
+  }
+}
+
+function handleBinaryFile() {
+  let fileList = this.files;
+  console.log("in handleBinaryFiles")
+  if(fileList.length > 0){
+    let file = fileList[0];
+    let reader = new FileReader();
+    reader.onload = function(e) {
+      let fileBuffer = new Uint8Array(reader.result);
+      console.log( fileBuffer )
+      arrayElementsInt = Array.from(fileBuffer);
+      console.log(arrayElementsInt.toString());
+      document.getElementById('arrayInput').value=`\{${arrayElementsInt.toString()}\}`;
+      formatArray();
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+function handleTextFile() {
+  let fileList = this.files;
+  if(fileList.length > 0){
+    let file = fileList[0];
+    let reader = new FileReader();
+    reader.onload = function(e) {
+      console.log( reader.result );
+      document.getElementById('arrayInput').value=reader.result;
+      formatArray();
+    };
+    reader.readAsText(file);
+  }
+}
+function formatArray() {
+  const arrayInput = document.getElementById('arrayInput').value;
+  const outputFormat = document.getElementById('outputFormat').value;
+  const skipNewline = document.getElementById('skipNewline').checked;
+  const enableLineBreakAfterChar = document.getElementById('enableLineBreakAfterChar').checked;
+  const lineBreakAfterChar = parseInt(document.getElementById('lineBreakAfterChar').value, 10);
+  const enableLineBreakAfterElem = document.getElementById('enableLineBreakAfterElem').checked;
+  const lineBreakAfterElem = parseInt(document.getElementById('lineBreakAfterElem').value, 10);
+  //const indentation = Number.isInteger(parseInt(document.getElementById('indentation').value, 10)) ? ' '.repeat(parseInt(document.getElementById('indentation').value, 10)) : '\t'.repeat(document.getElementById('indentation').value.length);
+  const indentation = document.getElementById('linePrefix').value
+
+  // Extract the text before the opening curly brace and the array elements
+  const beforeArray = arrayInput.substring(0, arrayInput.indexOf('{')).trim();
+  console.log( {"beforeArray: ": beforeArray});
+  const afterArray = arrayInput.substring(arrayInput.indexOf('}')+1);
+  console.log( {"afterArray: " : afterArray});
+  let arrayElements = arrayInput.substring(arrayInput.indexOf('{'),arrayInput.indexOf('}')).replace(/.*{/g, '').replace(/}.*/g, '').split(',');
+  console.log( arrayElements );
+  arrayElements = arrayElements.map(el => el.trim()).filter(el => el !== '');
+  console.log( arrayElements );
+  mytest = arrayElements;
+  console.log( arrayElements );
+
+  arrayElementsInt = arrayElements.map(el => el.startsWith('0x') ? parseInt(el, 16) : parseInt(el, 10) );
+  console.log( arrayElementsInt );
+
+  arrayElements = arrayElements.map(el => {
+    let num = el.startsWith('0x') ? parseInt(el, 16) : parseInt(el, 10);
+    return outputFormat === "hex" ? `${!document.getElementById('skipHexPrefix').checked ? "0x":""}${num.toString(16).toUpperCase().padStart(2, '0')}` : num.toString(10);
+  });
+  //arrayElements = arrayElements.map(el => outputFormat === "hex" ? `0x${el.toString(16).toUpperCase().padStart(2, '0')}` : el.toString(10) );
+  console.log( arrayElements );
+
+// Initialize the formatted output with the text before the array if any
+  let formattedOutput = beforeArray ? `${beforeArray}\n` : '';
+  formattedOutput += "{\n";
+  // let lineLength = skipNewline ? 0 : indentation.length;
+  let lineLength = 0;
+  let elementCount = 0;
+
+  // Function to add a line break
+  const addLineBreak = () => {
+    if (!skipNewline) {
+      formattedOutput += "\n" + indentation;
+      lineLength = indentation.length;
+    }
+    elementCount = 0;
+  };
+
+  // Add initial indentation if not skipping newlines
+  //if (!skipNewline) {
+    formattedOutput += indentation;
+  //}
+
+  // Build the formatted output string
+  arrayElements.forEach((el, index) => {
+    let nextElement = el + (index < arrayElements.length - 1 ? (document.getElementById('skipComma').checked ? " " : ", ") : "");
+    let additionalLength = nextElement.length + (elementCount == 0 ? indentation.length : 0);
+    // console.log("next element: \"%s\" length %d, additionalLength %d lineLength", nextElement, nextElement.length, additionalLength, lineLength);
+    if ((enableLineBreakAfterChar && lineLength + additionalLength - (nextElement.endsWith(' ') ? 1 : 0) > lineBreakAfterChar) ||
+        (enableLineBreakAfterElem && elementCount >= lineBreakAfterElem)) {
+      formattedOutput = (skipNewline ? formattedOutput : formattedOutput.trimEnd());
+      addLineBreak();
+    }
+
+    formattedOutput += nextElement;
+    lineLength += additionalLength;
+    elementCount++;
+  });
+
+  // Close the formatted output with a newline and closing brace if not skipping newlines
+  if (!skipNewline || lineLength > indentation.length) {
+    formattedOutput += "\n";
+  }
+  formattedOutput += "}";
+  formattedOutput += afterArray;
+
+  // Output the result to the output div
+  document.getElementById('output').textContent = formattedOutput;
+  
+  // Base64 encode the data in arrayInput and update the URL
+  //const arrayData = document.getElementById('arrayInput').value;
+  //const encodedData = btoa(arrayData);
+  //const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?data=' + encodedData;
+  //window.history.pushState({ path: newUrl }, '', newUrl);
+  updateUrlWithBase64(0)
+}
+
+// New function to copy the output to the clipboard
+function copyToClipboard() {
+  const outputText = document.getElementById('output').innerText;
+  navigator.clipboard.writeText(outputText).then(
+    () => alert('Output copied to clipboard'),
+    err => alert('Error copying text: ', err)
+  );
+}
+
+function updateUrlWithBase64(doAlert = 1) {
+  const arrayData = document.getElementById('arrayInput').value;
+  const encodedData = btoa(arrayData);
+
+  // Check if the URL would be too long and notify the user if so.
+  const maxLength = 2048; // Common maximum URL length for browsers.
+  const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?data=' + encodedData;
+
+  if (newUrl.length > maxLength) {
+    document.getElementById("b64button").disabled = true;
+    if( doAlert ) {
+      alert('The formatted array is too long to be encoded in the URL.');
+    }
+  } else {
+    document.getElementById("b64button").disabled = false;
+    window.history.pushState({ path: newUrl }, '', newUrl);
+  }
+}
+
+function updateIndentation() {
+  document.getElementById('linePrefix').value = Number.isInteger(parseInt(document.getElementById('indentation').value, 10)) ? ' '.repeat(parseInt(document.getElementById('indentation').value, 10)) : '\t'.repeat(document.getElementById('indentation').value.length);
+}
+
+function downloadBinary() {
+  let fileBuffer = new Uint8Array(arrayElementsInt);
+  let blob = new Blob([fileBuffer], {type: "application/octet-stream"});
+  let a = document.createElement("a");
+  a.href = window.URL.createObjectURL(blob);
+  a.download = "file.bin";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function downloadCFile() {
+  let blob = new Blob([document.getElementById('output').textContent], {type: "text/plain"});
+  let a = document.createElement("a");
+  a.href = window.URL.createObjectURL(blob);
+  a.download = "file.txt";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+</script>
+</body>
+</html>
+
