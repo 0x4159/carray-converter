@@ -1,11 +1,11 @@
 # C Array Converter
 
-This utilty takes 8-bit comma separated values enclosed in curly braces, and formats its based on the options selected. Conversion is done in the browser, so none of your data is transmitted to an external server.
+This utility takes 8-bit comma separated values enclosed in curly braces, and formats it based on the selected options. Conversion is done in the browser, so none of your data is transmitted to an external server.
 
 ## Options
 | Option | Description |
 | - | - |
-| Optput as | toggle between hexadecimal (default) or decimal output |
+| Optput as | Toggle between hexadecimal (default) or decimal output |
 | Skip hex prefix | Applies when output is hexidecimal. Skipping the 0x makes it easier to copy output to an external hex editor |
 | Skip adding comma | Skipping commas between elements makes it easier to copy output to an external hex editor |
 | Skip adding newlines | Skip adding newline after character limit or element limit. Overrides following two options |
@@ -14,5 +14,5 @@ This utilty takes 8-bit comma separated values enclosed in curly braces, and for
 | Indentation | Set the indentation for each line with elements. Select from the list of options or input a custom string |
 
 ## Notes
-- Only the first set of curly braces are converted
+- Only the the data in the first set of curly braces is converted
 - Text before and after the curly braces are preserved (whitespace trimmed)
