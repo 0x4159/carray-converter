@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>C Array Formatter</title>
+<title>C Array Converter</title>
 <style>
   body {
     font-family: Arial, sans-serif;
@@ -57,8 +57,9 @@
   <h1>File to C Array Converter</h1>
   <p>
     This utility converts binary files or c formatted arrays into a user specified format<br>
-    Valid input is a c-like array (Hexadecimal or decimal comma separated values surrounded by curly braces)<br>
-    Text before and after the opening and closing curly braces are copied to the output
+    Valid input is a c-like array (Hexadecimal or decimal comma separated values enclosed in curly braces)<br>
+    Text before and after the opening and closing curly braces are copied to the output<br>
+    <a href="https://github.com/0x4159/carray-converter">Github</a>
   </p>
 <div class="container">
   <label for="binaryFile">Choose a binary file to open:</label>
@@ -102,7 +103,7 @@
     <option value="t">1 tab</option>
     <option value="tt">2 tabs</option>
   </select>
-  <input type="text" id="linePrefix" value="    ">
+  Custom:<input type="text" id="linePrefix" value="    ">
   <br>
   
   <button onclick="formatArray()">Format Array</button>
@@ -114,7 +115,7 @@
 </div>
 
 <script>
-let mytest = "hello world"
+// arrayELementsInt holds the parsed integers of the input after formatArray is called
 let arrayElementsInt = [];
 let inputBinaryFile = document.getElementById("binaryFile");
 inputBinaryFile.addEventListener("change", handleBinaryFile, false);
@@ -133,11 +134,12 @@ window.onload = function() {
     skipClear = 1;
   }
   else{
-    document.getElementById('arrayInput').value = atob('LyogVGhlIGZvbGxvd2luZyBhcnJheSB3aWxsIGJlIGNvbnZlcnRlZCB0byB0aGUgc3BlY2lmaWVkIGZvcm1hdCAqLwp1bnNpZ25lZCBjaGFyIHRlc3RfYXJyYXlbXSA9IHsKICAxLCAyLCA0LCAweDgsIDB4MTAsIDMyICw2NCwxMjgsMjU1LDI1NSwyNTUsMHg0MSwgMHg1OQp9OwoKLy8gVGhlIGZvbGxvd2luZyBhcnJheSB3aWxsIG5vdCBiZSBjb252ZXJ0ZWQgKG5vdCB0aGUgZmlyc3Qgc2V0IG9mIGN1cmx5IGJyYWNlcykKY2hhciBub19jb252ZXJ0X2FycmF5W10gPSB7CiAgMSwgMiwgNCwgMHg4LCAweDEwLCAzMiAsNjQsMTI4Cn07CiAg')
+    // Load arrayInput with default text
+    document.getElementById('arrayInput').value = atob('LyogVGhlIGZvbGxvd2luZyBhcnJheSB3aWxsIGJlIGNvbnZlcnRlZCB0byB0aGUgc3BlY2lmaWVkIGZvcm1hdCAqLwp1bnNpZ25lZCBjaGFyIHRlc3RfYXJyYXlbXSA9IHsKICAxLCAyLCA0LCAweDgsIDB4MTAsIDMyICw2NCwxMjgsMjU1LDI1NSwyNTUsMHg0MSwgMHg1OQp9OwoKLy8gVGhlIGZvbGxvd2luZyBhcnJheSB3aWxsIG5vdCBiZSBjb252ZXJ0ZWQgKG5vdCB0aGUgZmlyc3Qgc2V0IG9mIGN1cmx5IGJyYWNlcykKY2hhciBub19jb252ZXJ0X2FycmF5W10gPSB7CiAgMSwgMiwgNCwgMHg4LCAweDEwLCAzMiAsNjQsMTI4Cn07')
   }
 };
 
-function clearArrayInput(skip=0) {
+function clearArrayInput(skip=1) {
   if(!skip){
     document.getElementById('arrayInput').value = "";
   }
@@ -145,34 +147,33 @@ function clearArrayInput(skip=0) {
 
 function handleBinaryFile() {
   let fileList = this.files;
-  console.log("in handleBinaryFiles")
   if(fileList.length > 0){
     let file = fileList[0];
     let reader = new FileReader();
     reader.onload = function(e) {
       let fileBuffer = new Uint8Array(reader.result);
-      console.log( fileBuffer )
       arrayElementsInt = Array.from(fileBuffer);
-      console.log(arrayElementsInt.toString());
+      console.debug(`Read from bin file: ${arrayElementsInt.toString()}`);
       document.getElementById('arrayInput').value=`\{${arrayElementsInt.toString()}\}`;
       formatArray();
     };
     reader.readAsArrayBuffer(file);
   }
 }
+
 function handleTextFile() {
   let fileList = this.files;
   if(fileList.length > 0){
     let file = fileList[0];
     let reader = new FileReader();
     reader.onload = function(e) {
-      console.log( reader.result );
       document.getElementById('arrayInput').value=reader.result;
       formatArray();
     };
     reader.readAsText(file);
   }
 }
+
 function formatArray() {
   const arrayInput = document.getElementById('arrayInput').value;
   const outputFormat = document.getElementById('outputFormat').value;
@@ -181,36 +182,44 @@ function formatArray() {
   const lineBreakAfterChar = parseInt(document.getElementById('lineBreakAfterChar').value, 10);
   const enableLineBreakAfterElem = document.getElementById('enableLineBreakAfterElem').checked;
   const lineBreakAfterElem = parseInt(document.getElementById('lineBreakAfterElem').value, 10);
-  //const indentation = Number.isInteger(parseInt(document.getElementById('indentation').value, 10)) ? ' '.repeat(parseInt(document.getElementById('indentation').value, 10)) : '\t'.repeat(document.getElementById('indentation').value.length);
   const indentation = document.getElementById('linePrefix').value
 
-  // Extract the text before the opening curly brace and the array elements
-  const beforeArray = arrayInput.substring(0, arrayInput.indexOf('{')).trim();
-  console.log( {"beforeArray: ": beforeArray});
-  const afterArray = arrayInput.substring(arrayInput.indexOf('}')+1);
-  console.log( {"afterArray: " : afterArray});
-  let arrayElements = arrayInput.substring(arrayInput.indexOf('{'),arrayInput.indexOf('}')).replace(/.*{/g, '').replace(/}.*/g, '').split(',');
-  console.log( arrayElements );
-  arrayElements = arrayElements.map(el => el.trim()).filter(el => el !== '');
-  console.log( arrayElements );
-  mytest = arrayElements;
-  console.log( arrayElements );
+  // Check for curly braces
+  if( arrayInput.indexOf('{') < 0 || arrayInput.substring(arrayInput.indexOf('{')).trim().indexOf('}') < 0 )
+  {
+    alert( "Invalid Input")
+    return;
+  }
 
+  // Extract the text before the opening curly brace
+  const beforeArray = arrayInput.substring(0, arrayInput.indexOf('{')).trim();
+  console.debug(`beforeArray: ${beforeArray}`);
+  // Extract the text after the opening curly brace
+  const afterOpenBrace = arrayInput.substring(arrayInput.indexOf('{'));
+  console.debug(`afterOpenBrace: ${afterOpenBrace}`);
+  // Extract the text after the closing curly brace
+  const afterArray = afterOpenBrace.substring(afterOpenBrace.indexOf('}')+1);
+  console.debug(`afterArray: ${afterArray}`);
+  let arrayElements = afterOpenBrace.substring(afterOpenBrace.indexOf('{'),afterOpenBrace.indexOf('}')).replace(/.*{/g, '').replace(/}.*/g, '').split(',');
+  console.debug(`arrayElements: ${arrayElements}`);
+  arrayElements = arrayElements.map(el => el.trim()).filter(el => el !== '');
+  console.debug(`arrayElements(trimmed): ${arrayElements}`);
+
+  // Parse as integers and store in global variable
   arrayElementsInt = arrayElements.map(el => el.startsWith('0x') ? parseInt(el, 16) : parseInt(el, 10) );
-  console.log( arrayElementsInt );
+  console.debug(`arrayElementsInt(parsed as int) ${arrayElementsInt}`);
 
   arrayElements = arrayElements.map(el => {
     let num = el.startsWith('0x') ? parseInt(el, 16) : parseInt(el, 10);
     return outputFormat === "hex" ? `${!document.getElementById('skipHexPrefix').checked ? "0x":""}${num.toString(16).toUpperCase().padStart(2, '0')}` : num.toString(10);
   });
-  //arrayElements = arrayElements.map(el => outputFormat === "hex" ? `0x${el.toString(16).toUpperCase().padStart(2, '0')}` : el.toString(10) );
-  console.log( arrayElements );
+  console.debug(`arrayElements(formatted) ${arrayElements}`);
 
-// Initialize the formatted output with the text before the array if any
+  // Initialize the formatted output with the text before the array if any
   let formattedOutput = beforeArray ? `${beforeArray}\n` : '';
   formattedOutput += "{\n";
-  // let lineLength = skipNewline ? 0 : indentation.length;
-  let lineLength = 0;
+  formattedOutput += indentation;
+  let lineLength = indentation.length;
   let elementCount = 0;
 
   // Function to add a line break
@@ -222,24 +231,20 @@ function formatArray() {
     elementCount = 0;
   };
 
-  // Add initial indentation if not skipping newlines
-  //if (!skipNewline) {
-    formattedOutput += indentation;
-  //}
 
   // Build the formatted output string
   arrayElements.forEach((el, index) => {
     let nextElement = el + (index < arrayElements.length - 1 ? (document.getElementById('skipComma').checked ? " " : ", ") : "");
-    let additionalLength = nextElement.length + (elementCount == 0 ? indentation.length : 0);
-    // console.log("next element: \"%s\" length %d, additionalLength %d lineLength", nextElement, nextElement.length, additionalLength, lineLength);
-    if ((enableLineBreakAfterChar && lineLength + additionalLength - (nextElement.endsWith(' ') ? 1 : 0) > lineBreakAfterChar) ||
+    console.debug("next element: \"%s\" length %d, additionalLength %d lineLength %d", nextElement, nextElement.length, nextElement.length, lineLength);
+    if ((enableLineBreakAfterChar && lineLength + nextElement.length - (nextElement.endsWith(' ') ? 1 : 0) > lineBreakAfterChar) ||
         (enableLineBreakAfterElem && elementCount >= lineBreakAfterElem)) {
       formattedOutput = (skipNewline ? formattedOutput : formattedOutput.trimEnd());
+      console.debug("add linebreak");
       addLineBreak();
     }
 
     formattedOutput += nextElement;
-    lineLength += additionalLength;
+    lineLength += nextElement.length;
     elementCount++;
   });
 
@@ -252,16 +257,11 @@ function formatArray() {
 
   // Output the result to the output div
   document.getElementById('output').textContent = formattedOutput;
-  
-  // Base64 encode the data in arrayInput and update the URL
-  //const arrayData = document.getElementById('arrayInput').value;
-  //const encodedData = btoa(arrayData);
-  //const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?data=' + encodedData;
-  //window.history.pushState({ path: newUrl }, '', newUrl);
-  updateUrlWithBase64(0)
+
+  // updateUrlWithBase64(0)
+  encodeAndCheckUrlLength(document.getElementById('arrayInput').value);
 }
 
-// New function to copy the output to the clipboard
 function copyToClipboard() {
   const outputText = document.getElementById('output').innerText;
   navigator.clipboard.writeText(outputText).then(
@@ -270,23 +270,34 @@ function copyToClipboard() {
   );
 }
 
-function updateUrlWithBase64(doAlert = 1) {
-  const arrayData = document.getElementById('arrayInput').value;
-  const encodedData = btoa(arrayData);
+function encodeAndCheckUrlLength( inputStr ) {
+  const encodedData = btoa(inputStr);
 
-  // Check if the URL would be too long and notify the user if so.
+  // Check if the URL would be too long
   const maxLength = 2048; // Common maximum URL length for browsers.
   const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?data=' + encodedData;
-
+  
   if (newUrl.length > maxLength) {
     document.getElementById("b64button").disabled = true;
-    if( doAlert ) {
-      alert('The formatted array is too long to be encoded in the URL.');
-    }
+    return "";
   } else {
     document.getElementById("b64button").disabled = false;
-    window.history.pushState({ path: newUrl }, '', newUrl);
+    return encodedData;
   }
+}
+
+function updateUrlWithBase64(doAlert = 1) {
+  const arrayData = document.getElementById('arrayInput').value;
+  const encodedData = encodeAndCheckUrlLength(arrayData);
+  if( encodedData == "" && doAlert )
+  {
+    alert('The formatted array is too long to be encoded in the URL.');
+    return;
+  }
+
+  // Update the URL
+  const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?data=' + encodedData;
+  window.history.pushState({ path: newUrl }, '', newUrl);
 }
 
 function updateIndentation() {
